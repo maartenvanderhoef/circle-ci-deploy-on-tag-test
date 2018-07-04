@@ -1,0 +1,98 @@
+version: 2
+
+staging_filter: &staging_filter
+  branches:
+    only: master
+
+release_filter: &release_filter
+  branches:
+    ignore: /.*/
+  tags:
+    only: /^release-.*$/
+
+pqa_filter: &pqa_filter
+  branches:
+    ignore: /.*/
+  tags:
+    only: /^pqa\/.*$/
+
+jobs:
+  build:
+    machine:
+      enabled: true
+    steps:
+      - run: echo build
+      - run: /bin/true
+  test:
+    machine:
+      enabled: true
+    steps:
+      - run: echo test
+      - run: /bin/true
+
+  deploy-to-pqa:
+    machine:
+      enabled: true
+    steps:
+      - deploy:
+          name: Deploy to qa
+          command: |
+              echo "We deploy to pqa ${CIRCLE_TAG#*/} - ${CIRCLE_TAG}"
+
+  deploy-to-qa:
+    machine:
+      enabled: true
+    steps:
+      - deploy:
+          name: Deploy to qa
+          command: |
+              echo "We deploy to qa"
+
+  deploy-to-staging:
+    machine:
+      enabled: true
+    steps:
+      - deploy:
+          name: Deploy to staging
+          command: |
+              echo "We deploy to staging"
+          filters: *staging_filter
+
+  deploy-to-production:
+    machine:
+      enabled: true
+    steps:
+      - deploy:
+          name: Deploy to staging
+          command: |
+              echo "We deploy to staging"
+          filters: *release_filter
+
+
+workflows:
+  version: 2
+  build-test-and-deploy:
+    jobs:
+      - test:
+          requires:
+            - build
+      - deploy-to-pqa:
+          requires:
+            - test
+            - build
+          filters: *pqa_filter
+      - deploy-to-qa:
+          requires:
+            - test
+            - build
+          filters: *staging_filter
+      - deploy-to-staging:
+          requires:
+            - test
+            - build
+          filters: *staging_filter
+      - deploy-to-prod:
+          requires:
+            - test
+            - build
+          filters: *release_filter
